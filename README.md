@@ -8,15 +8,30 @@
 
 **任何 AI Agent 或命令行环境都能用**——本工具只是「一个 SKILL.md + 几个 bash/python 脚本」,没有框架绑定。
 
+### 📦 直接下载压缩包(不用 git,最简单)
+
+| 方式 | 链接 |
+|---|---|
+| **ZIP 压缩包** | 👉 https://github.com/yanshengguc/ai-network-fallback-proxy-skill/archive/refs/heads/main.zip |
+| **TAR.GZ 压缩包** | https://github.com/yanshengguc/ai-network-fallback-proxy-skill/archive/refs/heads/main.tar.gz |
+| **正式 Release 页**(含版本 zip) | https://github.com/yanshengguc/ai-network-fallback-proxy-skill/releases |
+
+下载后解压,把 `ai-network-fallback-proxy-skill/` 目录放到技能目录即可:
+- WorkBuddy(Windows):`%USERPROFILE%\.workbuddy\skills\`
+- WorkBuddy(Linux/macOS):`~/.workbuddy/skills/`
+- 其他 Agent:任意目录,直接调用 `scripts/` 下的脚本
+
+### 命令行安装
+
 ```bash
 # 方式一:git clone(推荐,方便更新)
 git clone https://github.com/yanshengguc/ai-network-fallback-proxy-skill.git
 #    → WorkBuddy 用户:放到用户技能目录即可被识别
-#      Windows: %USERPROFILE%\.workbuddy\skills\network-fallback-proxy\
+#      Windows: %USERPROFILE%\.workbuddy\skills\ai-network-fallback-proxy-skill\
 #      Linux/macOS: ~/.workbuddy/skills/ai-network-fallback-proxy-skill/
 #    → 其他 Agent:任意目录,直接调用 scripts/ 下的脚本
 
-# 方式二:仅下载脚本
+# 方式二:curl 下载并解压
 curl -sL https://github.com/yanshengguc/ai-network-fallback-proxy-skill/archive/refs/heads/main.tar.gz | tar -xz
 ```
 
