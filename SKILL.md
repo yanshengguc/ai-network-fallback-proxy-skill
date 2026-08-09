@@ -1,11 +1,11 @@
 ---
-name: network-fallback-proxy
+name: ai-network-fallback-proxy-skill
 description: 网络故障自动代理兜底 + 代理开关控制。当访问 GitHub 等外网站点出现超时/失败(DNS 解析失败、connect timeout、connection refused、SSL 错误、网络波动)时,自动检测本机 VPN 是否开启(进程+端口+实测连通三层校验),未开则自动拉起代理核心(xray)并注入代理环境变量,随后走代理并带超时和指数退避重试;支持按需自动开启/关闭代理(关闭=关 Windows 系统代理,不杀任何进程、全程后台无窗口),支持「用完自动还原」(临时开代理执行命令后自动恢复原状态,如 git push)。红线:绝不 kill v2rayN 客户端进程;输出绝不泄露节点信息。前置要求:用户必须自己已安装 VPN 客户端,本技能不提供 VPN 服务。触发词:网络不通、GitHub 打不开、外网失败、走代理、connect timeout、connection refused、代理、翻墙、检测VPN、vpn开了吗、自动开vpn、帮我开vpn、关代理、关闭代理、关vpn、开代理、用完还原、传github、git push。
 version: 1.5.1
 agent_created: true
 ---
 
-# network-fallback-proxy — 网络故障自动代理兜底
+# ai-network-fallback-proxy-skill — 网络故障自动代理兜底(AI Agent 专用)
 
 ## 用完自动还原(临时开启代理执行命令)
 

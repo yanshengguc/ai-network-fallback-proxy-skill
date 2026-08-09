@@ -10,14 +10,14 @@
 
 ```bash
 # 方式一:git clone(推荐,方便更新)
-git clone https://github.com/yanshengguc/network-fallback-proxy.git
+git clone https://github.com/yanshengguc/ai-network-fallback-proxy-skill.git
 #    → WorkBuddy 用户:放到用户技能目录即可被识别
 #      Windows: %USERPROFILE%\.workbuddy\skills\network-fallback-proxy\
-#      Linux/macOS: ~/.workbuddy/skills/network-fallback-proxy/
+#      Linux/macOS: ~/.workbuddy/skills/ai-network-fallback-proxy-skill/
 #    → 其他 Agent:任意目录,直接调用 scripts/ 下的脚本
 
 # 方式二:仅下载脚本
-curl -sL https://github.com/yanshengguc/network-fallback-proxy/archive/refs/heads/main.tar.gz | tar -xz
+curl -sL https://github.com/yanshengguc/ai-network-fallback-proxy-skill/archive/refs/heads/main.tar.gz | tar -xz
 ```
 
 安装后验证:`bash scripts/status.sh` 应输出 `VERDICT=VPN_ON/OFF` 及端口状态。
@@ -36,7 +36,7 @@ curl -sL https://github.com/yanshengguc/network-fallback-proxy/archive/refs/head
 ## 文件结构
 
 ```
-network-fallback-proxy/
+ai-network-fallback-proxy-skill/
 ├── SKILL.md          # 技能说明(触发条件、流程、退出码、Agent 执行要点)
 ├── scripts/
 │   ├── vpnctl.py     # 核心控制器:on / off / status(后台无窗口)
