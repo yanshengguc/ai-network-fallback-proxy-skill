@@ -138,11 +138,21 @@ bash "scripts/probe.sh"
 bash "scripts/fetch.sh" "https://github.com"
 
 # 拉取并保存内容到文件
-bash "...\fetch.sh" "https://raw.githubusercontent.com/..." > result.txt
+bash "scripts/fetch.sh" "https://raw.githubusercontent.com/..." > result.txt
 
 # 自定义重试次数
-bash "...\fetch.sh" "https://github.com" 5
+bash "scripts/fetch.sh" "https://github.com" 5
+
+# 临时开代理执行单条命令,用完自动还原(HTTPS git push)
+bash "scripts/run_with_proxy.sh" git push origin main
+
+# 任务内多次用代理:包住整个任务脚本,任务完成才统一关闭一次
+bash "scripts/run_with_proxy.sh" bash my_task.sh
+
+# 程序化:任务开始 start.sh,任务结束 stop.sh(多次网络操作期间代理保持)
 ```
+
+> **多次使用建议**:任务需多次访问外网时,用 `run_with_proxy.sh` 包住整个任务脚本,或程序化 `start.sh` 开头 / `stop.sh` 结尾——代理在整个任务期间保持开启,完成后统一关闭一次,避免每条命令反复开关。
 
 ## 退出码约定
 

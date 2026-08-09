@@ -4,6 +4,26 @@
 
 > ⚠️ 前置要求:本工具**不提供 VPN 服务**。你需要自己已经安装并运行 VPN 客户端(v2rayN / Clash 等)且配置好节点,本工具只是「调用」你已有的代理。
 
+## 安装(快速开始,不限于 WorkBuddy)
+
+**任何 AI Agent 或命令行环境都能用**——本工具只是「一个 SKILL.md + 几个 bash/python 脚本」,没有框架绑定。
+
+```bash
+# 方式一:git clone(推荐,方便更新)
+git clone https://github.com/yanshengguc/network-fallback-proxy.git
+#    → WorkBuddy 用户:放到用户技能目录即可被识别
+#      Windows: %USERPROFILE%\.workbuddy\skills\network-fallback-proxy\
+#      Linux/macOS: ~/.workbuddy/skills/network-fallback-proxy/
+#    → 其他 Agent:任意目录,直接调用 scripts/ 下的脚本
+
+# 方式二:仅下载脚本
+curl -sL https://github.com/yanshengguc/network-fallback-proxy/archive/refs/heads/main.tar.gz | tar -xz
+```
+
+安装后验证:`bash scripts/status.sh` 应输出 `VERDICT=VPN_ON/OFF` 及端口状态。
+
+> 个性化:默认代理端口 10808、v2rayN 路径 `C:\v2rayN-windows-64\...`,可通过环境变量覆盖:`PROXY_PORT`、`V2RAYN_DIR`、`PYTHON`。兼容 Clash(7890)等:改 `scripts/probe.sh` 的 PORTS 与 `scripts/vpnctl.py` 的 `V2RAYN_DIR/PORT` 即可。
+
 ## 特性
 
 - 🔍 **三层状态检测**:VPN 客户端进程 → 代理端口 → 实测外网连通性(google generate_204),确认「真的通」而不是「端口在」
@@ -47,7 +67,18 @@ bash scripts/fetch.sh "https://github.com"
 
 # 5. 临时开代理执行命令,用完自动还原(如 HTTPS 方式 git push)
 bash scripts/run_with_proxy.sh git push origin main
+
+# 6. 任务内多次用代理:包住整个任务脚本,任务完成才统一关闭一次
+#    (脚本内多次 curl/git 全程走代理,不会每条命令开关一次)
+bash scripts/run_with_proxy.sh bash my_task.sh
+
+# 7. Agent/程序化调用:一次开、多次用、最后关
+bash scripts/start.sh        # 任务开始:开代理
+...  # 任务中的多次网络操作,全部走代理
+bash scripts/stop.sh         # 任务结束:统一关闭
 ```
+
+> **多次使用建议**:如果任务需要多次访问外网,用 `run_with_proxy.sh` 包住**整个任务脚本**(或程序化地 `start.sh` 开头 / `stop.sh` 结尾),代理在整个任务期间保持开启,最后统一关闭一次——而不是每条命令单独开关,避免反复开关的开销。
 
 ## 关键设计说明
 
