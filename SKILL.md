@@ -150,9 +150,16 @@ bash "scripts/run_with_proxy.sh" git push origin main
 bash "scripts/run_with_proxy.sh" bash my_task.sh
 
 # 程序化:任务开始 start.sh,任务结束 stop.sh(多次网络操作期间代理保持)
+
+# 智能分流:国内直连(快),国外走代理;人在国外则反转
+bash "scripts/smart_fetch.sh" "https://www.baidu.com"   # 国内 → 直连
+bash "scripts/smart_fetch.sh" "https://github.com"      # 国外 → 走代理
+NET_LOCALE=abroad bash "scripts/smart_fetch.sh" "https://github.com"  # 人在国外:国外直连
 ```
 
 > **多次使用建议**:任务需多次访问外网时,用 `run_with_proxy.sh` 包住整个任务脚本,或程序化 `start.sh` 开头 / `stop.sh` 结尾——代理在整个任务期间保持开启,完成后统一关闭一次,避免每条命令反复开关。
+
+> **智能分流(smart_fetch.sh)**:按目标域名自动选路——`NET_LOCALE=cn`(默认)国内直连、国外走代理;`NET_LOCALE=abroad` 反之。bash 内联分类毫秒级完成,直连失败自动回退代理。适用于「搜国内东西时不想走代理」的场景。
 
 ## 退出码约定
 

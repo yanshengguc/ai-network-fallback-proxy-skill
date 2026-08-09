@@ -76,9 +76,16 @@ bash scripts/run_with_proxy.sh bash my_task.sh
 bash scripts/start.sh        # 任务开始:开代理
 ...  # 任务中的多次网络操作,全部走代理
 bash scripts/stop.sh         # 任务结束:统一关闭
+
+# 8. 智能分流:国内直连(快),国外走代理;人在国外则反转
+bash scripts/smart_fetch.sh "https://www.baidu.com"   # 国内 → 直连,最快
+bash scripts/smart_fetch.sh "https://github.com"      # 国外 → 自动走代理
+NET_LOCALE=abroad bash scripts/smart_fetch.sh "https://github.com"  # 人在国外:国外直连
 ```
 
 > **多次使用建议**:如果任务需要多次访问外网,用 `run_with_proxy.sh` 包住**整个任务脚本**(或程序化地 `start.sh` 开头 / `stop.sh` 结尾),代理在整个任务期间保持开启,最后统一关闭一次——而不是每条命令单独开关,避免反复开关的开销。
+
+> **智能分流(smart_fetch.sh)**:根据目标域名自动选择路径——`NET_LOCALE=cn`(默认)时国内目标**直连**(不碰代理,速度快),国外目标**走代理**;`NET_LOCALE=abroad`(人在国外)则**相反**(国外直连、国内走代理)。分类是 bash 内联毫秒级完成,直连失败会自动回退走代理。域名分类见 `scripts/smart_fetch.sh` 内嵌列表(常见国内外站点 + `.cn/.中国` 后缀 + IP 判定)。
 
 ## 关键设计说明
 
