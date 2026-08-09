@@ -45,6 +45,19 @@ def _sh(cmd, timeout=10):
         return -1, str(e)
 
 
+def _port_listening(port, timeout=0.3):
+    """快速探测端口是否监听(socket 连接,0.3s 超时)"""
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(timeout)
+    try:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+    except Exception:
+        return False
+    finally:
+        s.close()
+
+
 # ---------- Windows 系统代理(注册表,无需管理员权限) ----------
 IE_KEY = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings"
 
@@ -95,7 +108,7 @@ def _refresh_sysproxy():
 
 
 def port_listener_pids(port):
-    """返回监听某端口的 PID 列表(netstat 解析)"""
+    """返回监听某端口的 PID 列表(仅 off 时调用,全量解析一次可接受)"""
     pids = []
     rc, out = _sh(["netstat", "-ano"])
     for line in out.splitlines():
@@ -109,16 +122,17 @@ def port_listener_pids(port):
 
 
 def port_open(port):
-    return len(port_listener_pids(port)) > 0
+    """快速端口探测(socket,0.3s 超时)"""
+    return _port_listening(port)
 
 
 def core_running():
-    rc, out = _sh(["tasklist"])
+    rc, out = _sh(["tasklist", "/FI", "IMAGENAME eq xray.exe"])
     return "xray.exe" in out
 
 
 def client_running():
-    rc, out = _sh(["tasklist"])
+    rc, out = _sh(["tasklist", "/FI", "IMAGENAME eq v2rayN.exe"])
     return "v2rayN.exe" in out
 
 
@@ -251,12 +265,21 @@ def cmd_off(check_only=False):
 
 # ---------- 状态 ----------
 def cmd_status():
-    client = "v2rayN.exe" if client_running() else "NONE"
-    core = "xray.exe" if core_running() else "NONE"
     port = PORT if port_open(PORT) else "NONE"
+    if port != "NONE":
+        # 端口通 → 进程必然在跑,不再查 tasklist(省 1.5s);进程名仅作展示
+        client = "v2rayN.exe"
+        core = "xray.exe"
+    else:
+        # 端口未开 → 查一次 tasklist 给出诊断
+        rc, tl = _sh(["tasklist"])
+        client = "v2rayN.exe" if "v2rayN.exe" in tl else "NONE"
+        core = "xray.exe" if "xray.exe" in tl else "NONE"
     conn = "UNTESTED"
     if port != "NONE":
-        rc, code = _sh(["curl", "-sS", "-m", "8", "-x", "http://127.0.0.1:%d" % PORT,
+        # 连通性探测:总超时 4s、连接超时 3s,避免长时间阻塞
+        rc, code = _sh(["curl", "-sS", "-m", "4", "--connect-timeout", "3",
+                        "-x", "http://127.0.0.1:%d" % PORT,
                         "-o", os.devnull, "-w", "%{http_code}", PROBE_URL])
         code = code.strip()
         conn = "OK" if code in ("204", "200") else "FAIL(%s)" % (code or "timeout")

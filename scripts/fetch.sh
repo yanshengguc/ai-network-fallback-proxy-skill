@@ -8,8 +8,8 @@
 set -u
 URL="${1:?usage: fetch.sh <url> [max_retries=3]}"
 MAX_RETRIES="${2:-3}"
-CONNECT_TIMEOUT=5
-TOTAL_TIMEOUT=20
+CONNECT_TIMEOUT="${FETCH_CONNECT_TIMEOUT:-5}"
+TOTAL_TIMEOUT="${FETCH_TOTAL_TIMEOUT:-20}"
 LAST_ERR=""
 
 # 代理候选列表:优先 HTTP,再 SOCKS5 变体(10808 实测为混合端口,HTTP CONNECT 可用)
