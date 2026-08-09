@@ -1,29 +1,47 @@
 #!/usr/bin/env bash
-# smart_fetch.sh — 智能分流拉取:国内直连(快),国外走代理;人在国外则反转
+# smart_fetch.sh — 智能分流拉取 + 任务内代理状态跟随
 # 用法: bash smart_fetch.sh <url> [max_retries=3]
-#   bash smart_fetch.sh "https://www.baidu.com"     # 国内 → 直连,最快
-#   bash smart_fetch.sh "https://github.com"        # 国外 → 自动走代理
-#   NET_LOCALE=abroad bash smart_fetch.sh "https://github.com"  # 人在国外:国外直连
+#   bash smart_fetch.sh "https://www.baidu.com"     # 国内 → 直连;若代理是本工具开的则先关闭
+#   bash smart_fetch.sh "https://github.com"        # 国外 → 自动开启并走代理
+#   NET_LOCALE=abroad bash smart_fetch.sh "https://github.com"  # 人在国外:国外直连,国内走代理
 #
 # 分流规则:
 #   NET_LOCALE=cn(默认):   国内目标直连;国外目标走代理;未知目标先直连失败再代理
 #   NET_LOCALE=abroad:     国外目标直连;国内目标走代理;未知目标先直连失败再代理
 #
+# 任务跟随(核心新增):同一任务内多次调用时,代理状态随目标动态切换
+#   - 目标国外:确保代理开启(记录 tool_opened=1)
+#   - 目标国内:若代理是「本工具刚开的」(tool_opened=1),自动关闭回到直连;
+#              若代理是用户手动开的,保持不动,绝不误关
+#   - 状态文件 .proxy_state 记录任务起始状态 + 是否本工具开启
+#   - 与 run_with_proxy.sh 搭配:任务结束统一还原并清理状态文件
+#
 # 速度策略:
-#   - 分类用 bash 内联(零 fork、零 Python 启动,毫秒级)
-#   - 目录用 ${BASH_SOURCE[0]} 直接取,避免 cd/pwd 的 fork 开销(Windows Git Bash 极慢)
-#   - 直连时显式清空代理环境变量,不做任何代理探测
-#   - 走代理复用 fetch.sh(含超时+退避重试)
+#   - 分类 bash 内联(零 fork、零 Python);目录用 BASH_SOURCE 免 fork
+#   - 直连时显式清空代理环境变量
+#   - 状态判断用 bash 读文件(毫秒级),仅在需要开关时才调 vpnctl
 # 退出码: 0=成功;2=需代理但代理不可用;3=全部失败;4=无 VPN 客户端
 set -u
-# 用 BASH_SOURCE 取脚本目录(避免 cd/pwd fork 开销)
 SELF="${BASH_SOURCE[0]%/*}"
 [ -n "$SELF" ] || SELF="."
 URL="${1:?usage: smart_fetch.sh <url> [max_retries=3]}"
 MAX_RETRIES="${2:-3}"
 LOCALE="${NET_LOCALE:-cn}"
+STATE_FILE="$SELF/.proxy_state"
 
-# ---------- 域名分类(bash 内联,零启动开销) ----------
+# ---------- 状态文件读写(bash,毫秒级) ----------
+state_load() {
+  # 返回: task_started=0/1  tool_opened=0/1
+  task_started=0; tool_opened=0
+  [ -f "$STATE_FILE" ] || return 0
+  # shellcheck disable=SC1090
+  . "$STATE_FILE" 2>/dev/null || true
+}
+state_save() {
+  printf 'task_started=%s\ntool_opened=%s\n' "$task_started" "$tool_opened" > "$STATE_FILE"
+}
+
+# ---------- 域名分类(bash 内联) ----------
 HOST="${URL#*://}"
 HOST="${HOST%%/*}"
 HOST="${HOST%%\?*}"
@@ -50,7 +68,7 @@ fi
 
 echo "route: $URL [$CLASS] locale=$LOCALE" >&2
 
-# 决定是否走代理:cn 环境国内直连国外代理;abroad 环境相反;unknown 先直连
+# 决定是否走代理
 use_proxy=0
 if [ "$LOCALE" = "cn" ]; then
   [ "$CLASS" = "foreign" ] && use_proxy=1
@@ -58,17 +76,35 @@ elif [ "$LOCALE" = "abroad" ]; then
   [ "$CLASS" = "cn" ] && use_proxy=1
 fi
 
+# ---------- 任务跟随:按需开关系统代理 ----------
+state_load
+if [ "$use_proxy" = "1" ]; then
+  # 需要代理:确保开启(幂等;记录为本工具开启)
+  OUT=$(bash "$SELF/start.sh" 2>&1) || { echo "smart: 无法开启代理: $OUT" >&2; exit 2; }
+  tool_opened=1
+  task_started=1
+  state_save
+else
+  # 不需要代理:若代理是本工具刚开的 → 关掉回到直连;用户手动开的则不碰
+  if [ "${tool_opened:-0}" = "1" ]; then
+    bash "$SELF/stop.sh" >/dev/null 2>&1
+    tool_opened=0
+    state_save
+    echo "smart: 切回直连(本任务开的代理已关闭)" >&2
+  fi
+fi
+
+# ---------- 拉取 ----------
 if [ "$use_proxy" = "0" ]; then
-  # 直连:显式清空代理环境变量(curl 会读 HTTP_PROXY,否则「直连」名不副实且慢)
   if env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
       -u ALL_PROXY -u all_proxy \
       curl -fsS -m "${FETCH_TOTAL_TIMEOUT:-20}" --connect-timeout "${FETCH_CONNECT_TIMEOUT:-5}" \
       "$URL" 2>/dev/null; then
     exit 0
   fi
-  # 直连失败 → 回退到 fetch.sh(自动检测/拉起代理 + 退避重试)
+  # 直连失败 → 回退 fetch.sh(自动检测/拉起代理 + 退避重试)
   exec bash "$SELF/fetch.sh" "$URL" "$MAX_RETRIES"
 fi
 
-# 走代理(复用 fetch.sh:内部 status → 自动开 → 注入环境变量 → 退避重试)
+# 走代理(复用 fetch.sh)
 exec bash "$SELF/fetch.sh" "$URL" "$MAX_RETRIES"

@@ -17,7 +17,7 @@
 #         不改 git 全局配置,不杀任何进程;命令结束后必然还原(trap 保证)。
 set -u
 SELF="$(cd "$(dirname "$0")" && pwd -W 2>/dev/null || pwd)"
-PY="${PYTHON:-python}"
+PY="${PYTHON:-C:/Users/yansheng/.workbuddy/binaries/python/versions/3.13.12/python.exe}"
 [ -x "$PY" ] || PY="python"
 
 [ $# -ge 1 ] || { echo "usage: run_with_proxy.sh <command...>"; exit 64; }
@@ -45,6 +45,8 @@ restore() {
     bash "$SELF/stop.sh" >/dev/null 2>&1
     echo "restored: 操作前代理为关闭,已自动关闭代理"
   fi
+  # 清理 smart_fetch 的任务状态文件,保证下次任务从干净状态开始
+  rm -f "$SELF/.proxy_state" 2>/dev/null
 }
 trap restore EXIT
 

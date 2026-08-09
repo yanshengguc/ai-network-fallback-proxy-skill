@@ -87,6 +87,8 @@ NET_LOCALE=abroad bash scripts/smart_fetch.sh "https://github.com"  # 人在国�
 
 > **智能分流(smart_fetch.sh)**:根据目标域名自动选择路径——`NET_LOCALE=cn`(默认)时国内目标**直连**(不碰代理,速度快),国外目标**走代理**;`NET_LOCALE=abroad`(人在国外)则**相反**(国外直连、国内走代理)。分类是 bash 内联毫秒级完成,直连失败会自动回退走代理。域名分类见 `scripts/smart_fetch.sh` 内嵌列表(常见国内外站点 + `.cn/.中国` 后缀 + IP 判定)。
 
+> **任务内动态跟随**:同一任务里多次调用 `smart_fetch.sh` 时,代理状态随目标动态切换——目标国外自动开代理、切到国内目标自动关回直连(仅当代理是本工具刚开的;用户手动开的代理**绝不误关**)、再国外再开。任务结束用 `run_with_proxy.sh` 包裹可统一还原并清理状态。适合「搜索国内内容时不想挂代理、访问国外时自动走代理」的场景。
+
 ## 关键设计说明
 
 - **curl/git 不读 Windows 系统代理,只认环境变量**:`run_with_proxy.sh` 和 `fetch.sh` 都会给子命令注入 `HTTP_PROXY/HTTPS_PROXY → 127.0.0.1:10808`(仅对子进程生效,不污染当前 shell)。
