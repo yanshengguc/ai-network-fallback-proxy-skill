@@ -96,9 +96,10 @@ fi
 
 # ---------- 拉取 ----------
 if [ "$use_proxy" = "0" ]; then
+  # 真直连 + 短超时(直连失败要快速转代理,不能白等)
   if env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
       -u ALL_PROXY -u all_proxy \
-      curl -fsS -m "${FETCH_TOTAL_TIMEOUT:-20}" --connect-timeout "${FETCH_CONNECT_TIMEOUT:-5}" \
+      curl -fsS -m "${DIRECT_TIMEOUT:-8}" --connect-timeout "${DIRECT_CONNECT_TIMEOUT:-3}" \
       "$URL" 2>/dev/null; then
     exit 0
   fi

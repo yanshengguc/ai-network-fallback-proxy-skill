@@ -4,7 +4,7 @@
 # 行为: 代理端口已开 → ALREADY_ON;未开 → 后台拉起 xray 核心(无窗口),轮询等待端口
 # 约束: 绝不 kill/停止 v2rayN GUI 进程;输出不含节点信息
 set -u
-SELF="$(cd "$(dirname "$0")" && pwd -W 2>/dev/null || pwd)"
-PY="${PYTHON:-python}"
+SELF="${BASH_SOURCE[0]%/*}"; [ -n "$SELF" ] || SELF="."
+PY="${PYTHON:-C:/Users/yansheng/.workbuddy/binaries/python/versions/3.13.12/python.exe}"
 [ -x "$PY" ] || PY="python"
 exec "$PY" "$SELF/vpnctl.py" on

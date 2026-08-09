@@ -16,7 +16,7 @@
 # 安全性:全程不读取/打印节点信息;只动系统代理开关 + 子进程环境变量,
 #         不改 git 全局配置,不杀任何进程;命令结束后必然还原(trap 保证)。
 set -u
-SELF="$(cd "$(dirname "$0")" && pwd -W 2>/dev/null || pwd)"
+SELF="${BASH_SOURCE[0]%/*}"; [ -n "$SELF" ] || SELF="."
 PY="${PYTHON:-C:/Users/yansheng/.workbuddy/binaries/python/versions/3.13.12/python.exe}"
 [ -x "$PY" ] || PY="python"
 

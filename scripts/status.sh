@@ -4,8 +4,8 @@
 # 输出: client= / core= / port= / connectivity= / VERDICT=VPN_ON|VPN_OFF|NO_VPN_CLIENT
 # 约束: 输出不含节点信息
 set -u
-SELF="$(cd "$(dirname "$0")" && pwd -W 2>/dev/null || pwd)"
-PY="${PYTHON:-python}"
+SELF="${BASH_SOURCE[0]%/*}"; [ -n "$SELF" ] || SELF="."
+PY="${PYTHON:-C:/Users/yansheng/.workbuddy/binaries/python/versions/3.13.12/python.exe}"
 [ -x "$PY" ] || PY="python"
 OUT=$("$PY" "$SELF/vpnctl.py" status) || true
 RC=$?

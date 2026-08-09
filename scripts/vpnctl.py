@@ -155,18 +155,16 @@ def _start_core():
 
 
 def _stop_pids(pids):
-    """优雅终止指定 PID(仅核心进程;绝不触碰 v2rayN GUI)。
-    优先用 Windows 原生 taskkill(对跨进程终止权限最可靠)"""
+    """终止指定 PID(仅核心进程;绝不触碰 v2rayN GUI)。
+    一次 taskkill /F 尝试;失败即返回(权限不足场景,系统代理已关不影响结论)"""
     stopped = []
     for pid in pids:
         try:
-            rc, out = _sh(["taskkill", "/PID", str(pid), "/T", "/F"])
-            # /F 强杀是最后手段;先试不带 /F 的温和终止
-            if rc != 0:
-                rc2, out2 = _sh(["taskkill", "/PID", str(pid), "/T"])
-                if rc2 != 0:
-                    return stopped, "taskkill %s 失败(可能权限不足)" % pid
-            stopped.append(pid)
+            rc, out = _sh(["taskkill", "/PID", str(pid), "/F"])
+            if rc == 0:
+                stopped.append(pid)
+            else:
+                return stopped, "taskkill %s 失败(可能权限不足)" % pid
         except Exception as e:
             return stopped, str(e)
     return stopped, None
@@ -216,12 +214,10 @@ def cmd_on():
 
 # ---------- 关闭 ----------
 def cmd_off(check_only=False):
+    # 直接用 netstat 找 10808 监听 PID;10808 是 v2rayN 专用端口,监听者即核心
+    # (跳过逐 PID 的 tasklist 验证,省 1.5s/个;taskkill 失败自然说明非核心)
     pids = port_listener_pids(PORT)
-    core_pids = []
-    for pid in pids:
-        rc, out = _sh(["tasklist", "/FI", "PID eq %s" % pid])
-        if "xray.exe" in out:
-            core_pids.append(pid)
+    core_pids = pids  # 10808 端口监听者视为核心(端口由 v2rayN 配置)
     if check_only:
         desc = []
         if core_pids:
@@ -247,13 +243,13 @@ def cmd_off(check_only=False):
         stopped, err = _stop_pids(core_pids)
         if stopped:
             print("OFF: 已停止 xray 核心 pid=%s" % ",".join(stopped))
+            # 只有真正停掉核心才需要等端口释放(最多 3s,不再傻等)
+            for _ in range(3):
+                if not port_open(PORT):
+                    break
+                time.sleep(1)
         else:
             print("WARN: 无法停止核心进程(%s)。系统代理已关闭,流量不再走代理;核心仍由 v2rayN 管理,不影响上网。" % (err or "权限不足"))
-        # 等待端口释放(尽力)
-        for _ in range(STOP_TIMEOUT):
-            if not port_open(PORT):
-                break
-            time.sleep(1)
         if os.path.exists(PIDFILE):
             try:
                 os.remove(PIDFILE)
@@ -264,7 +260,33 @@ def cmd_off(check_only=False):
 
 
 # ---------- 状态 ----------
+CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".status_cache")
+CACHE_TTL = 3  # 秒:3s 内重复 status 直接复用连通性结果
+
+
+def _read_cache():
+    """读缓存:返回 (port, conn) 或 None(缓存过期/不存在)"""
+    try:
+        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            ts, cport, cconn = f.read().split("|")
+            if time.time() - float(ts) <= CACHE_TTL and cport == str(PORT):
+                return cport, cconn
+    except Exception:
+        pass
+    return None
+
+
+def _write_cache(port, conn):
+    try:
+        with open(CACHE_FILE, "w", encoding="utf-8") as f:
+            f.write("%f|%s|%s" % (time.time(), port, conn))
+    except Exception:
+        pass
+
+
 def cmd_status():
+    # QUICK=1:只查端口,跳过连通性探测(供 fetch/start 内部快速判断,省 1-4s)
+    quick = os.environ.get("QUICK") == "1"
     port = PORT if port_open(PORT) else "NONE"
     if port != "NONE":
         # 端口通 → 进程必然在跑,不再查 tasklist(省 1.5s);进程名仅作展示
@@ -277,12 +299,21 @@ def cmd_status():
         core = "xray.exe" if "xray.exe" in tl else "NONE"
     conn = "UNTESTED"
     if port != "NONE":
-        # 连通性探测:总超时 4s、连接超时 3s,避免长时间阻塞
-        rc, code = _sh(["curl", "-sS", "-m", "4", "--connect-timeout", "3",
-                        "-x", "http://127.0.0.1:%d" % PORT,
-                        "-o", os.devnull, "-w", "%{http_code}", PROBE_URL])
-        code = code.strip()
-        conn = "OK" if code in ("204", "200") else "FAIL(%s)" % (code or "timeout")
+        if quick:
+            # 快速模式:端口在即视为可用(连通性由调用方自己 curl 验证)
+            conn = "OK"
+        else:
+            cached = _read_cache()
+            if cached:
+                conn = cached[1]
+            else:
+                # 连通性探测:总超时 4s、连接超时 3s,避免长时间阻塞
+                rc, code = _sh(["curl", "-sS", "-m", "4", "--connect-timeout", "3",
+                                "-x", "http://127.0.0.1:%d" % PORT,
+                                "-o", os.devnull, "-w", "%{http_code}", PROBE_URL])
+                code = code.strip()
+                conn = "OK" if code in ("204", "200") else "FAIL(%s)" % (code or "timeout")
+                _write_cache(port, conn)
     print("client=%s" % client)
     print("core=%s" % core)
     print("port=%s" % port)
