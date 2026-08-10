@@ -51,6 +51,7 @@ bash "scripts/run_with_proxy.sh" git push origin main
 | `bash stop.sh` 或 `vpnctl.py off` | 关闭代理:关闭 Windows 系统代理(ProxyEnable=0),不杀任何进程 | `STOPPED: 代理已关闭 (v2rayN GUI 保留)` |
 | `bash stop.sh --check` | 预演关闭,不真关 | `CHECK: ... (v2rayN GUI 保留)` |
 | `bash status.sh` 或 `vpnctl.py status` | 状态:进程/端口/连通性 | `VERDICT=VPN_ON` |
+| `bash restore.sh` | 一键恢复:启动 v2rayN(如需)+ 立即拉起核心,防断联 | `restore: 完成 — 代理已恢复` |
 
 关键行为:
 - `on` 端口已开返回 `ALREADY_ON`,但**仍会同步系统代理状态**(若之前被关闭则重新打开)。

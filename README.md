@@ -60,7 +60,8 @@ ai-network-fallback-proxy-skill/
 │   ├── status.sh     # 状态检测(薄封装)
 │   ├── fetch.sh      # 带超时+代理兜底+退避重试的请求工具
 │   ├── probe.sh      # 探测本机代理端口
-│   └── run_with_proxy.sh  # 临时开代理执行命令,用完自动还原
+│   ├── run_with_proxy.sh  # 临时开代理执行命令,用完自动还原
+│   └── restore.sh    # 一键恢复代理(防断联:启动 v2rayN 后立即拉起核心)
 ```
 
 ## 快速开始
